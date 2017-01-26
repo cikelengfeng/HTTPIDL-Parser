@@ -143,10 +143,11 @@ extension RecognizedToken: CustomDebugStringConvertible {
 struct Lexer {
     let dfa: Trie
     
-    init(tokens: [String]) {
+    init(lexicalRules: [String]) {
+        //前缀树在这里作为一个DFA使用，根节点是起始状态，key可以随便写。
         var root = Trie.node("x", [])
-        tokens.forEach { (token) in
-            root.insert(string: token)
+        lexicalRules.forEach { (lexicalRule) in
+            root.insert(string: lexicalRule)
         }
         dfa = root
     }
