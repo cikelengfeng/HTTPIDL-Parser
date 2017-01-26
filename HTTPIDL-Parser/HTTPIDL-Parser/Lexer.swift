@@ -125,8 +125,16 @@ extension Trie {
 }
 
 struct RecognizedToken {
-//    let range: Range<String.CharacterView.Index>
+    let range: Range<String.CharacterView.Index>
     let string: String
+}
+
+extension RecognizedToken: CustomDebugStringConvertible {
+    var debugDescription: String {
+        get {
+            return "<\"\(string)\">"
+        }
+    }
 }
 
 struct Lexer {
@@ -143,38 +151,47 @@ struct Lexer {
     func recognize(source: String) -> (ok: Bool, tokens: [RecognizedToken]) {
         var ok: Bool = true
         var tokens = [RecognizedToken]()
-        var workingString = ""
         var workingIndex = source.startIndex
+        var workingStringLocation: String.Index? = nil
+        var lastTerminatorParentIndex: String.Index? = nil
         var workingTrie = dfa
         while workingIndex < source.endIndex {
             let codeUnit = source[workingIndex]
-            if let exists = workingTrie.child(key: codeUnit), case .node(let key, _) = exists {
-                workingString.append(key)
+            if workingTrie.hasTernimatorChild() {
+                lastTerminatorParentIndex = workingIndex
+            }
+            if let exists = workingTrie.child(key: codeUnit) {
+                if workingStringLocation == nil {
+                    workingStringLocation = workingIndex
+                }
                 workingIndex = source.index(after: workingIndex)
                 workingTrie = exists
-                
-                if workingIndex == source.endIndex {
-                    if workingTrie.hasTernimatorChild() {
-                        let token = RecognizedToken(string: workingString)
+                if workingIndex == source.endIndex, workingTrie.hasTernimatorChild() {
+                    if let tokenFrom = workingStringLocation {
+                        let tokenRange = Range(uncheckedBounds: (lower: tokenFrom, upper: workingIndex))
+                        let tokenString = source.substring(with: tokenRange)
+                        let token = RecognizedToken(range: tokenRange, string: tokenString)
                         tokens.append(token)
-                        workingString = ""
-                        workingTrie = dfa
                     } else {
                         ok = false
-                        break;
+                        break
                     }
                 }
+            } else if let tokenTo = lastTerminatorParentIndex, let tokenFrom = workingStringLocation {
+                let tokenRange = Range(uncheckedBounds: (lower: tokenFrom, upper: tokenTo))
+                let tokenString = source.substring(with: tokenRange)
+                let token = RecognizedToken(range: tokenRange, string: tokenString)
+                tokens.append(token)
+                //已经识别到一个token，清理现场
+                workingIndex = tokenTo
+                workingStringLocation = nil
+                workingTrie = dfa
+                lastTerminatorParentIndex = nil
             } else {
-                if workingTrie.hasTernimatorChild() {
-                    let token = RecognizedToken(string: workingString)
-                    tokens.append(token)
-                    workingString = ""
-                    workingTrie = dfa
-                } else {
-                    ok = false
-                    break;
-                }
+                ok = false
+                break
             }
+            
         }
         return (ok: ok, tokens: tokens)
     }
