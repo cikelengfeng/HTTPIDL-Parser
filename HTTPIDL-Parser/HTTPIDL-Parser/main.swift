@@ -10,15 +10,16 @@ import Foundation
 
 print("Hello, World!")
 
-let lexicalRules = ["MESSAGE","STRUCT","REQUEST","RESPONSE","GET","POST","PUT","DELETE","PATCH","INT64","INT32","BOOL","DOUBLE","STRING","FILE","BLOB","ARRAY","DICT","a","b","c","d","e","f","g","h","i","j","k","l","m","n","o","p","q","r","s","t","u","v","w","x","y","z","A","B","C","D","E","F","G","H","I","J","K","L","M","N","O","P","Q","R","S","T","U","V","W","X","Y","Z","0","1","2","3","4","5","6","7","8","9","=",";"," ","\n","\t","\r","{","}","<",">","=","$","/",","]
-//let lexicalRules = ["m","mee","ed"]
+let lexicalRules: [(String, TokenType)] = [
+    ("MESSAGE", .entityMessage),("STRUCT", .entityStruct),("REQUEST", .entityRequest),("RESPONSE", .entityRespsonse),("GET", .methodGet),("POST", .methodPost),("PUT", .methodPut), ("DELETE", .methodDelete),("INT64", .typeInt64),("INT32", .typeInt32),("BOOL", .typeBool),("DOUBLE", .typeDouble),("STRING", .typeString),("FILE", .typeFile),("BLOB", .typeBlob),("ARRAY", .typeArray),("DICT", .typeDict),
+("a", .fragmentChar),("b", .fragmentChar),("c", .fragmentChar),("d", .fragmentChar),("e", .fragmentChar),("f", .fragmentChar),("g", .fragmentChar),("h", .fragmentChar),("i", .fragmentChar),("j", .fragmentChar),("k", .fragmentChar),("l", .fragmentChar),("m", .fragmentChar),("n", .fragmentChar),("o", .fragmentChar),("p", .fragmentChar),("q", .fragmentChar),("r", .fragmentChar),("s", .fragmentChar),("t", .fragmentChar),("u", .fragmentChar),("v", .fragmentChar),("w", .fragmentChar),("x", .fragmentChar),("y", .fragmentChar),("z", .fragmentChar),("A", .fragmentChar),("B", .fragmentChar),("C", .fragmentChar),("D", .fragmentChar),("E", .fragmentChar),("F", .fragmentChar),("G", .fragmentChar),("H", .fragmentChar),("I", .fragmentChar),("J", .fragmentChar),("K", .fragmentChar),("L", .fragmentChar),("M", .fragmentChar),("N", .fragmentChar),("O", .fragmentChar),("P", .fragmentChar),("Q", .fragmentChar),("R", .fragmentChar),("S", .fragmentChar),("T", .fragmentChar),("U", .fragmentChar),("V", .fragmentChar),("W", .fragmentChar),("X", .fragmentChar),("Y", .fragmentChar),("Z", .fragmentChar),
+                    ("0", .fragmentDigit),("1", .fragmentDigit),("2", .fragmentDigit),("3", .fragmentDigit),("4", .fragmentDigit),("5", .fragmentDigit),("6", .fragmentDigit),("7", .fragmentDigit),("8", .fragmentDigit),("9", .fragmentDigit),
+                    ("=", .assistAssign),(";", .assistSemicolon),("{", .assistLBrace),("}", .assistRBrace),("<", .assistLABracket),(">", .assistRABracket),("$", .assistDollar),("/", .assistSlash),(",", .assistComma),
+                    (" ", .fragmentWhitespace),("\t", .fragmentWhitespace),("\n", .fragmentNewline),("\r", .fragmentNewline)]
+
 let lexer = Lexer(lexicalRules: lexicalRules)
-
-//print(lexer.dfa)
-
 let file = URL(fileURLWithPath: "/Users/xudong/Desktop/HTTPIDLParserExample/Example")
 let source = try! String(contentsOf: file)
-//let source = "med"
 let recognization = lexer.recognize(source: source)
 
 print(recognization)

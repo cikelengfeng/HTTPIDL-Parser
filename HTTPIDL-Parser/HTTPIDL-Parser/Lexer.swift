@@ -12,7 +12,7 @@ let terminatorUUID = UUID().uuidString
 
 enum Trie {
     indirect case node(Character, [Trie])
-    case terminator
+    case terminator(TokenType)
 }
 
 extension Trie: Equatable {
@@ -20,8 +20,8 @@ extension Trie: Equatable {
         switch (lhs, rhs) {
         case (.node(let lKey, _), .node(let rKey, _)):
             return lKey == rKey
-        case (.terminator, .terminator):
-            return true
+        case (.terminator(let ltype), .terminator(let rtype)):
+            return ltype == rtype
         default: return false
         }
     }
@@ -40,9 +40,9 @@ extension Trie: Hashable {
 
 extension Trie {
     //将一个单词(输入的字符串)插入到前缀树中
-    mutating func insert(string: String) {
+    mutating func insert(string: String, type: TokenType) {
         guard !string.isEmpty else {
-            self.insert(child: Trie.terminator)
+            self.insert(child: Trie.terminator(type))
             return
         }
         
@@ -53,12 +53,20 @@ extension Trie {
         } else {
             next = Trie.node(codeUnit, [])
         }
-        next.insert(string: string.substring(from: string.index(after: string.startIndex)))
+        next.insert(string: string.substring(from: string.index(after: string.startIndex)), type: type)
         self.insert(child: next)
     }
     
-    func hasTernimatorChild() -> Bool {
-        return contains(child: Trie.terminator)
+    func terminatorChild() -> Trie? {
+        guard case .node(_, let children) = self else {
+            return nil
+        }
+        return children.first(where: { (child) -> Bool in
+            if case .terminator(_) = child {
+                return true
+            }
+            return false
+        })
     }
     
     func contains(child: Trie) -> Bool {
@@ -120,8 +128,8 @@ extension Trie {
                 }
             })
             return .node(lKey, Array(tmp))
-        case (.terminator, .terminator):
-            return .terminator
+        case (.terminator(let lType), .terminator(_)):
+            return .terminator(lType)
         default: return nil
         }
     }
@@ -129,13 +137,14 @@ extension Trie {
 
 struct RecognizedToken {
     let range: Range<String.CharacterView.Index>
+    let type: TokenType
     let string: String
 }
 
 extension RecognizedToken: CustomDebugStringConvertible {
     var debugDescription: String {
         get {
-            return "<\"\(string)\">"
+            return "<\(type)(\(string))>"
         }
     }
 }
@@ -143,11 +152,11 @@ extension RecognizedToken: CustomDebugStringConvertible {
 struct Lexer {
     let dfa: Trie
     
-    init(lexicalRules: [String]) {
+    init(lexicalRules: [(String, TokenType)]) {
         //前缀树在这里作为一个DFA使用，根节点是起始状态，key可以随便写。
         var root = Trie.node("x", [])
         lexicalRules.forEach { (lexicalRule) in
-            root.insert(string: lexicalRule)
+            root.insert(string: lexicalRule.0, type: lexicalRule.1)
         }
         dfa = root
     }
@@ -163,6 +172,7 @@ struct Lexer {
         var workingStringLocation: String.Index? = nil
         //最后一个识别到的终结符的位置
         var lastTerminatorParentIndex: String.Index? = nil
+        var lastTerminator: Trie? = nil
         //在识别的过程中我们会不断深入到一颗前缀树的子树中，这个临时变量就是用来记录当前用于识别的前缀树
         var workingTrie = dfa
         //遍历所有的输入字符
@@ -170,8 +180,9 @@ struct Lexer {
             //取出当前用于识别的字符
             let codeUnit = source[workingIndex]
             //无论如何，如果当前前缀树有终结符，我们都先记录下来
-            if workingTrie.hasTernimatorChild() {
+            if let terminator = workingTrie.terminatorChild() {
                 lastTerminatorParentIndex = workingIndex
+                lastTerminator = terminator
             }
             if let exists = workingTrie.child(key: codeUnit) {
                 //如果没有记录过workingStringLocation，则说明当前字符是某个token的第一个字符
@@ -183,21 +194,21 @@ struct Lexer {
                 workingTrie = exists
                 //已经到了文件末尾，要特殊处理一下，如果当前已经跳转到到了某个状态并且前缀树有终结符，那么我们就成功的识别到了最后一个token，反之，说明最后一个token并没有写完整，则识别失败。
                 if workingIndex == source.endIndex {
-                    if workingTrie.hasTernimatorChild(), let tokenFrom = workingStringLocation {
+                    if let terminator = workingTrie.terminatorChild(), case .terminator(let tokenType) = terminator, let tokenFrom = workingStringLocation {
                         let tokenRange = Range(uncheckedBounds: (lower: tokenFrom, upper: workingIndex))
                         let tokenString = source.substring(with: tokenRange)
-                        let token = RecognizedToken(range: tokenRange, string: tokenString)
+                        let token = RecognizedToken(range: tokenRange, type: tokenType, string: tokenString)
                         tokens.append(token)
                     } else {
                         ok = false
                         break
                     }
                 }
-            } else if let tokenTo = lastTerminatorParentIndex, let tokenFrom = workingStringLocation {
+            } else if let tokenTo = lastTerminatorParentIndex, let tokenFrom = workingStringLocation, let terminator = lastTerminator, case .terminator(let tokenType) = terminator {
                 //如果当前字符没有被当前前缀树识别，输出当前识别到的最长token，并将工作位置回退到该token的末尾，然后继续识别
                 let tokenRange = Range(uncheckedBounds: (lower: tokenFrom, upper: tokenTo))
                 let tokenString = source.substring(with: tokenRange)
-                let token = RecognizedToken(range: tokenRange, string: tokenString)
+                let token = RecognizedToken(range: tokenRange, type: tokenType, string: tokenString)
                 tokens.append(token)
                 //已经识别到一个token，清理现场
                 workingIndex = tokenTo

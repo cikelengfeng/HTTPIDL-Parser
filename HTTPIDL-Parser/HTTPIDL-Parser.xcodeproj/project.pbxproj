@@ -9,6 +9,8 @@
 /* Begin PBXBuildFile section */
 		420409461E3875BB005C0220 /* main.swift in Sources */ = {isa = PBXBuildFile; fileRef = 420409451E3875BB005C0220 /* main.swift */; };
 		4204094D1E3875E2005C0220 /* Lexer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4204094C1E3875E2005C0220 /* Lexer.swift */; };
+		421032651E39DBBA00791E44 /* Parser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 421032641E39DBBA00791E44 /* Parser.swift */; };
+		421032671E3AE68800791E44 /* LexerTokenType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 421032661E3AE68800791E44 /* LexerTokenType.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -27,6 +29,8 @@
 		420409421E3875BB005C0220 /* HTTPIDL-Parser */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.executable"; includeInIndex = 0; path = "HTTPIDL-Parser"; sourceTree = BUILT_PRODUCTS_DIR; };
 		420409451E3875BB005C0220 /* main.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = main.swift; sourceTree = "<group>"; };
 		4204094C1E3875E2005C0220 /* Lexer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Lexer.swift; sourceTree = "<group>"; };
+		421032641E39DBBA00791E44 /* Parser.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Parser.swift; sourceTree = "<group>"; };
+		421032661E3AE68800791E44 /* LexerTokenType.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LexerTokenType.swift; sourceTree = "<group>"; };
 		4298D06F1E39099A001D0477 /* Example */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = Example; path = ../../../../Desktop/HTTPIDLParserExample/Example; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -62,6 +66,8 @@
 			children = (
 				420409451E3875BB005C0220 /* main.swift */,
 				4204094C1E3875E2005C0220 /* Lexer.swift */,
+				421032661E3AE68800791E44 /* LexerTokenType.swift */,
+				421032641E39DBBA00791E44 /* Parser.swift */,
 				4298D06F1E39099A001D0477 /* Example */,
 			);
 			path = "HTTPIDL-Parser";
@@ -126,8 +132,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				421032671E3AE68800791E44 /* LexerTokenType.swift in Sources */,
 				4204094D1E3875E2005C0220 /* Lexer.swift in Sources */,
 				420409461E3875BB005C0220 /* main.swift in Sources */,
+				421032651E39DBBA00791E44 /* Parser.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
