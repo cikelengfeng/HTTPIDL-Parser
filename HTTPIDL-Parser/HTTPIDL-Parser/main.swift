@@ -26,6 +26,9 @@ print("lexer result: ", ok)
 //print(tokens)
 
 let parser = Parser()
-let ast = try parser.parse(tokens: tokens)
-
-print(ast)
+do {
+    let ast = try parser.parse(tokens: tokens)
+    print(ast)
+} catch let error {
+    print(error)
+}
