@@ -11,6 +11,9 @@
 		4204094D1E3875E2005C0220 /* Lexer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4204094C1E3875E2005C0220 /* Lexer.swift */; };
 		421032651E39DBBA00791E44 /* Parser.swift in Sources */ = {isa = PBXBuildFile; fileRef = 421032641E39DBBA00791E44 /* Parser.swift */; };
 		421032671E3AE68800791E44 /* LexerTokenType.swift in Sources */ = {isa = PBXBuildFile; fileRef = 421032661E3AE68800791E44 /* LexerTokenType.swift */; };
+		421032691E3B08C400791E44 /* ParserRule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 421032681E3B08C400791E44 /* ParserRule.swift */; };
+		4210326D1E3B3AC100791E44 /* Error.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4210326C1E3B3AC100791E44 /* Error.swift */; };
+		4210326F1E3B3CD800791E44 /* Array+Helper.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4210326E1E3B3CD800791E44 /* Array+Helper.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -31,6 +34,9 @@
 		4204094C1E3875E2005C0220 /* Lexer.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Lexer.swift; sourceTree = "<group>"; };
 		421032641E39DBBA00791E44 /* Parser.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Parser.swift; sourceTree = "<group>"; };
 		421032661E3AE68800791E44 /* LexerTokenType.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = LexerTokenType.swift; sourceTree = "<group>"; };
+		421032681E3B08C400791E44 /* ParserRule.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ParserRule.swift; sourceTree = "<group>"; };
+		4210326C1E3B3AC100791E44 /* Error.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Error.swift; sourceTree = "<group>"; };
+		4210326E1E3B3CD800791E44 /* Array+Helper.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = "Array+Helper.swift"; sourceTree = "<group>"; };
 		4298D06F1E39099A001D0477 /* Example */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; name = Example; path = ../../../../Desktop/HTTPIDLParserExample/Example; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -68,6 +74,9 @@
 				4204094C1E3875E2005C0220 /* Lexer.swift */,
 				421032661E3AE68800791E44 /* LexerTokenType.swift */,
 				421032641E39DBBA00791E44 /* Parser.swift */,
+				421032681E3B08C400791E44 /* ParserRule.swift */,
+				4210326C1E3B3AC100791E44 /* Error.swift */,
+				4210326E1E3B3CD800791E44 /* Array+Helper.swift */,
 				4298D06F1E39099A001D0477 /* Example */,
 			);
 			path = "HTTPIDL-Parser";
@@ -135,7 +144,10 @@
 				421032671E3AE68800791E44 /* LexerTokenType.swift in Sources */,
 				4204094D1E3875E2005C0220 /* Lexer.swift in Sources */,
 				420409461E3875BB005C0220 /* main.swift in Sources */,
+				421032691E3B08C400791E44 /* ParserRule.swift in Sources */,
+				4210326D1E3B3AC100791E44 /* Error.swift in Sources */,
 				421032651E39DBBA00791E44 /* Parser.swift in Sources */,
+				4210326F1E3B3CD800791E44 /* Array+Helper.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

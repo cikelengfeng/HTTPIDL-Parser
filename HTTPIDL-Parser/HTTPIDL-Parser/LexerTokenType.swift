@@ -9,10 +9,10 @@
 import Foundation
 
 enum TokenType {
-    case entityMessage
-    case entityStruct
-    case entityRequest
-    case entityRespsonse
+    case keywordMessage
+    case keywordStruct
+    case keywordRequest
+    case keywordRespsonse
     case methodGet
     case methodPost
     case methodPut
@@ -36,9 +36,11 @@ enum TokenType {
     case assistComma
     case assistSemicolon
     case assistSlash
+    case assistUnderline
     case fragmentChar
     case fragmentDigit
     case fragmentNewline
     case fragmentWhitespace
+    case EOF
 }
 

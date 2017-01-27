@@ -141,6 +141,12 @@ struct RecognizedToken {
     let string: String
 }
 
+extension RecognizedToken: Equatable {
+    public static func ==(lhs: RecognizedToken, rhs: RecognizedToken) -> Bool {
+        return lhs.range == rhs.range && lhs.type == rhs.type && lhs.string == rhs.string
+    }
+}
+
 extension RecognizedToken: CustomDebugStringConvertible {
     var debugDescription: String {
         get {
@@ -222,6 +228,10 @@ struct Lexer {
             
         }
         //所有字符消耗完毕，输出是否成功识别此语言，以及识别到的所有token
+        if ok {
+            let range = Range(uncheckedBounds: (source.endIndex, source.endIndex))
+            tokens.append(RecognizedToken(range: range, type: TokenType.EOF, string: ""))
+        }
         return (ok: ok, tokens: tokens)
     }
 }
