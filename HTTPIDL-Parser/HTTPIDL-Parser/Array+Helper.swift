@@ -38,5 +38,9 @@ extension Array {
     func subarray(to: Index) -> [Element] {
         return Array(self[self.startIndex ..< to])
     }
+    
+    func subarray(range: Range<Index>) -> [Element] {
+        return Array(self[range])
+    }
 }
 

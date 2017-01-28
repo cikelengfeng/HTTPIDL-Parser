@@ -36,7 +36,8 @@ struct EntryContext: ParserContext {
     let EOF: RecognizedToken
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: EntryContext) {
-        var consumedIndex: Array.Index = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        var consumedIndex = contextStart
         var messages: [MessageContext] = []
         var structs: [StructContext] = []
         while consumedIndex < tokens.endIndex {
@@ -83,7 +84,8 @@ struct MessageContext: ParserContext {
     let RBRACE: RecognizedToken
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: MessageContext) {
-        var consumedIndex: Array.Index = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        var consumedIndex = contextStart
         //consume first keyword message
         guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.keywordMessage else {
             throw MessageContextError.missingMessageKeyword
@@ -145,7 +147,8 @@ struct URIContext: ParserContext {
     let components: [URIPathComponentContext]
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: URIContext) {
-        var consumedIndex: Array.Index = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        var consumedIndex = contextStart
         var components: [URIPathComponentContext] = []
         while consumedIndex < tokens.endIndex {
             do {
@@ -170,7 +173,8 @@ struct URIPathComponentContext: ParserContext {
     let param: ParamInUriContext?
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: URIPathComponentContext) {
-        var consumedIndex: Array.Index = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        var consumedIndex = contextStart
         //consume slash
         guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.assistSlash else {
             throw URIPathComponentContextError.missingSlash
@@ -206,7 +210,8 @@ struct ParamInUriContext: ParserContext {
     let identifier: IdentifierContext
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: ParamInUriContext) {
-        var consumedIndex: Array.Index = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        var consumedIndex = contextStart
         guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.assistDollar else {
             throw ParamInUriContextError.missingDollar
         }
@@ -229,7 +234,8 @@ struct IdentifierContext: ParserContext {
     let tokens: [RecognizedToken]
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: IdentifierContext) {
-        var consumedIndex: Array.Index = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        var consumedIndex = contextStart
         //first token MUST NOT be digit
         guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == .fragmentChar || tokens[consumedIndex].type == .assistUnderline else {
             throw IdentifierContextError.missingUnderlineOrChar
@@ -244,7 +250,8 @@ struct IdentifierContext: ParserContext {
                 break Loop
             }
         }
-        return (consumedIndex, IdentifierContext(tokens: tokens.subarray(to: consumedIndex)))
+        let range = Range(uncheckedBounds: (contextStart, consumedIndex))
+        return (consumedIndex, IdentifierContext(tokens: tokens.subarray(range: range)))
     }
 }
 
@@ -263,7 +270,8 @@ struct RequestContext: ParserContext {
     let RBRACE: RecognizedToken
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: RequestContext) {
-        var consumedIndex: Array.Index = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        var consumedIndex = contextStart
         //consume method
         let (methodConsumed, methodContext) = try MethodContext.consume(tokens: tokens.subarray(from: consumedIndex))
         consumedIndex = tokens.index(consumedIndex, offsetBy: methodConsumed)
@@ -313,7 +321,8 @@ struct MethodContext: ParserContext {
     let name: RecognizedToken
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: MethodContext) {
-        var consumedIndex: Array.Index = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        var consumedIndex = contextStart
         guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.methodGet || tokens[consumedIndex].type == TokenType.methodPost || tokens[consumedIndex].type == TokenType.methodPut || tokens[consumedIndex].type == TokenType.methodPatch || tokens[consumedIndex].type == TokenType.methodDelete else {
             throw MethodContextError.missingMethodKeyword
         }
@@ -337,7 +346,8 @@ struct ParamContext: ParserContext {
     let SEMICOLON: RecognizedToken
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: ParamContext) {
-        var consumedIndex: Array.Index = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        var consumedIndex = contextStart
         //consume type
         let (typeConsumed, typeContext) = try TypeContext.consume(tokens: tokens.subarray(from: consumedIndex))
         consumedIndex = tokens.index(consumedIndex, offsetBy: typeConsumed)
@@ -372,7 +382,8 @@ struct TypeContext: ParserContext {
     let genericType: GenericTypeContext?
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: TypeContext) {
-        var consumedIndex = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        var consumedIndex = contextStart
         let nonGenericType: NonGenericTypeContext?
         do {
             let (nonGenericTypeConsumed, nonGenericTypeContext) = try NonGenericTypeContext.consume(tokens: tokens.subarray(from: consumedIndex))
@@ -395,7 +406,8 @@ struct NonGenericTypeContext: ParserContext {
     let customType: IdentifierContext?
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: NonGenericTypeContext) {
-        var consumedIndex = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        var consumedIndex = contextStart
         let baseType: BaseTypeContext?
         do {
             let (baseTypeConsumed, baseTypeContext) = try BaseTypeContext.consume(tokens: tokens.subarray(from: consumedIndex))
@@ -421,7 +433,8 @@ struct BaseTypeContext: ParserContext {
     let name: RecognizedToken
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: BaseTypeContext) {
-        var consumedIndex = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        var consumedIndex = contextStart
         guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.typeBlob || tokens[consumedIndex].type == TokenType.typeBool || tokens[consumedIndex].type == TokenType.typeFile || tokens[consumedIndex].type == TokenType.typeInt32 || tokens[consumedIndex].type == TokenType.typeInt64 || tokens[consumedIndex].type == TokenType.typeDouble || tokens[consumedIndex].type == TokenType.typeString else {
             throw BaseTypeContextError.missingTypeKeyword
         }
@@ -436,7 +449,8 @@ struct GenericTypeContext: ParserContext {
     let dict: DictGenericTypeContext?
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: GenericTypeContext) {
-        var consumedIndex = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        var consumedIndex = contextStart
         let arrayType: ArrayGenericTypeContext?
         do {
             let (arrayTypeConsumed, arrayTypeContext) = try ArrayGenericTypeContext.consume(tokens: tokens.subarray(from: consumedIndex))
@@ -467,7 +481,8 @@ struct ArrayGenericTypeContext: ParserContext {
     let RABRACKET: RecognizedToken
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: ArrayGenericTypeContext) {
-        var consumedIndex = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        var consumedIndex = contextStart
         //consume array
         guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.typeArray else {
             throw ArrayGenericTypeContextError.missingArrayKeyword
@@ -511,7 +526,8 @@ struct DictGenericTypeContext: ParserContext {
     let RABRACKET: RecognizedToken
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: DictGenericTypeContext) {
-        var consumedIndex = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        var consumedIndex = contextStart
         //consume dict
         guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.typeDict else {
             throw DictGenericTypeContextError.missingDictKeyword
@@ -564,7 +580,8 @@ struct ResponseContext: ParserContext {
     let RBRACE: RecognizedToken
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: ResponseContext) {
-        var consumedIndex: Array.Index = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        var consumedIndex = contextStart
         //consume method
         let (methodConsumed, methodContext) = try MethodContext.consume(tokens: tokens.subarray(from: consumedIndex))
         consumedIndex = tokens.index(consumedIndex, offsetBy: methodConsumed)
@@ -620,7 +637,8 @@ struct StructContext: ParserContext {
     let RBRACE: RecognizedToken
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: StructContext) {
-        var consumedIndex: Array.Index = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
+        var consumedIndex = contextStart
         //consume struct
         consumedIndex = skipNLAndWS(tokens: tokens, from: consumedIndex)
         guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.keywordStruct else {
