@@ -23,6 +23,9 @@ func skipNLAndWS(tokens: [RecognizedToken], from: Array<RecognizedToken>.Index) 
 }
 
 protocol ParserContext {
+
+    var tokens: [RecognizedToken] {get}
+    var text: String {get}
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: Self)
 }
 
@@ -34,6 +37,15 @@ struct EntryContext: ParserContext {
     let messsages: [MessageContext]
     let structs: [StructContext]
     let EOF: RecognizedToken
+    
+    let tokens: [RecognizedToken]
+    var text: String {
+        get {
+            return tokens.reduce("") { (soFar, soGood) in
+                return soFar + soGood.string
+            }
+        }
+    }
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: EntryContext) {
         let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
@@ -65,7 +77,7 @@ struct EntryContext: ParserContext {
         guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.EOF else {
             throw EntryContextError.missingEOF
         }
-        return (consumedIndex, EntryContext(messsages: messages, structs: structs, EOF: tokens[consumedIndex]))
+        return (consumedIndex, EntryContext(messsages: messages, structs: structs, EOF: tokens[consumedIndex], tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
     }
 }
 
@@ -82,6 +94,15 @@ struct MessageContext: ParserContext {
     let requests: [RequestContext]
     let responses: [ResponseContext]
     let RBRACE: RecognizedToken
+    
+    let tokens: [RecognizedToken]
+    var text: String {
+        get {
+            return tokens.reduce("") { (soFar, soGood) in
+                return soFar + soGood.string
+            }
+        }
+    }
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: MessageContext) {
         let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
@@ -139,12 +160,21 @@ struct MessageContext: ParserContext {
         consumedIndex = tokens.index(after: consumedIndex)
         
         //return all above
-        return (consumedIndex, MessageContext(MESSAGE: messageToken, uri: uri, LBRACE: lbraceToken, requests: requests, responses: responses, RBRACE: rbraceToken))
+        return (consumedIndex, MessageContext(MESSAGE: messageToken, uri: uri, LBRACE: lbraceToken, requests: requests, responses: responses, RBRACE: rbraceToken, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
     }
 }
 
 struct URIContext: ParserContext {
     let components: [URIPathComponentContext]
+    
+    let tokens: [RecognizedToken]
+    var text: String {
+        get {
+            return tokens.reduce("") { (soFar, soGood) in
+                return soFar + soGood.string
+            }
+        }
+    }
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: URIContext) {
         let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
@@ -159,7 +189,7 @@ struct URIContext: ParserContext {
                 break
             }
         }
-        return (consumedIndex, URIContext(components: components))
+        return (consumedIndex, URIContext(components: components, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
     }
 }
 
@@ -171,6 +201,15 @@ struct URIPathComponentContext: ParserContext {
     let SLASH: RecognizedToken
     let identifier: IdentifierContext?
     let param: ParamInUriContext?
+    
+    let tokens: [RecognizedToken]
+    var text: String {
+        get {
+            return tokens.reduce("") { (soFar, soGood) in
+                return soFar + soGood.string
+            }
+        }
+    }
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: URIPathComponentContext) {
         let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
@@ -192,12 +231,12 @@ struct URIPathComponentContext: ParserContext {
             identifier = nil
         }
         guard identifier == nil else {
-            return (consumedIndex, URIPathComponentContext(SLASH: slashToken, identifier: identifier, param: nil))
+            return (consumedIndex, URIPathComponentContext(SLASH: slashToken, identifier: identifier, param: nil, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
         }
         //consume param
         let (paramConsumed, paramContext) = try ParamInUriContext.consume(tokens: tokens.subarray(from: consumedIndex))
         consumedIndex = tokens.index(consumedIndex, offsetBy: paramConsumed)
-        return (consumedIndex, URIPathComponentContext(SLASH: slashToken, identifier: nil, param: paramContext))
+        return (consumedIndex, URIPathComponentContext(SLASH: slashToken, identifier: nil, param: paramContext, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
     }
 }
 
@@ -208,6 +247,15 @@ enum ParamInUriContextError: HIParserError {
 struct ParamInUriContext: ParserContext {
     let DOLLAR: RecognizedToken
     let identifier: IdentifierContext
+    
+    let tokens: [RecognizedToken]
+    var text: String {
+        get {
+            return tokens.reduce("") { (soFar, soGood) in
+                return soFar + soGood.string
+            }
+        }
+    }
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: ParamInUriContext) {
         let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
@@ -222,7 +270,7 @@ struct ParamInUriContext: ParserContext {
         let (identifierConsumed, identifierContext) = try IdentifierContext.consume(tokens: tokens.subarray(from: consumedIndex))
         consumedIndex = tokens.index(consumedIndex, offsetBy: identifierConsumed)
         
-        return (consumedIndex, ParamInUriContext(DOLLAR: dollarToken, identifier: identifierContext))
+        return (consumedIndex, ParamInUriContext(DOLLAR: dollarToken, identifier: identifierContext, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
     }
 }
 
@@ -231,7 +279,15 @@ enum IdentifierContextError: HIParserError {
 }
 
 struct IdentifierContext: ParserContext {
+    
     let tokens: [RecognizedToken]
+    var text: String {
+        get {
+            return tokens.reduce("") { (soFar, soGood) in
+                return soFar + soGood.string
+            }
+        }
+    }
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: IdentifierContext) {
         let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
@@ -268,6 +324,15 @@ struct RequestContext: ParserContext {
     let LBRACE: RecognizedToken
     let params: [ParamContext]
     let RBRACE: RecognizedToken
+    
+    let tokens: [RecognizedToken]
+    var text: String {
+        get {
+            return tokens.reduce("") { (soFar, soGood) in
+                return soFar + soGood.string
+            }
+        }
+    }
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: RequestContext) {
         let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
@@ -308,7 +373,7 @@ struct RequestContext: ParserContext {
         let rbraceToken = tokens[consumedIndex]
         consumedIndex = tokens.index(after: consumedIndex)
         
-        return (consumedIndex, RequestContext(method: methodContext, REQUEST: requestToken, LBRACE: lbraceToken, params: params, RBRACE: rbraceToken))
+        return (consumedIndex, RequestContext(method: methodContext, REQUEST: requestToken, LBRACE: lbraceToken, params: params, RBRACE: rbraceToken, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
     }
 }
 
@@ -320,6 +385,15 @@ struct MethodContext: ParserContext {
     
     let name: RecognizedToken
     
+    let tokens: [RecognizedToken]
+    var text: String {
+        get {
+            return tokens.reduce("") { (soFar, soGood) in
+                return soFar + soGood.string
+            }
+        }
+    }
+    
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: MethodContext) {
         let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
         var consumedIndex = contextStart
@@ -328,7 +402,7 @@ struct MethodContext: ParserContext {
         }
         let name = tokens[consumedIndex]
         consumedIndex = tokens.index(after: consumedIndex)
-        return (consumedIndex, MethodContext(name: name))
+        return (consumedIndex, MethodContext(name: name, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
     }
 }
 
@@ -344,6 +418,15 @@ struct ParamContext: ParserContext {
     let ASSIGN: RecognizedToken
     let rhs: IdentifierContext
     let SEMICOLON: RecognizedToken
+    
+    let tokens: [RecognizedToken]
+    var text: String {
+        get {
+            return tokens.reduce("") { (soFar, soGood) in
+                return soFar + soGood.string
+            }
+        }
+    }
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: ParamContext) {
         let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
@@ -372,7 +455,7 @@ struct ParamContext: ParserContext {
         let semicolonToken = tokens[consumedIndex]
         consumedIndex = tokens.index(after: consumedIndex)
         
-        return (consumedIndex, ParamContext(type: typeContext, lhs: lhsContext, ASSIGN: assignToken, rhs: rhsContext, SEMICOLON: semicolonToken))
+        return (consumedIndex, ParamContext(type: typeContext, lhs: lhsContext, ASSIGN: assignToken, rhs: rhsContext, SEMICOLON: semicolonToken, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
     }
 }
 
@@ -380,6 +463,15 @@ struct TypeContext: ParserContext {
     
     let nonGenericType: NonGenericTypeContext?
     let genericType: GenericTypeContext?
+    
+    let tokens: [RecognizedToken]
+    var text: String {
+        get {
+            return tokens.reduce("") { (soFar, soGood) in
+                return soFar + soGood.string
+            }
+        }
+    }
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: TypeContext) {
         let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
@@ -393,17 +485,26 @@ struct TypeContext: ParserContext {
             nonGenericType = nil
         }
         guard nonGenericType == nil else {
-            return (consumedIndex, TypeContext(nonGenericType: nonGenericType, genericType: nil))
+            return (consumedIndex, TypeContext(nonGenericType: nonGenericType, genericType: nil, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
         }
         let (genericTypeConsumed, genericTypeContext) = try GenericTypeContext.consume(tokens: tokens)
         consumedIndex = tokens.index(consumedIndex, offsetBy: genericTypeConsumed)
-        return (consumedIndex, TypeContext(nonGenericType: nil, genericType: genericTypeContext))
+        return (consumedIndex, TypeContext(nonGenericType: nil, genericType: genericTypeContext, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
     }
 }
 
 struct NonGenericTypeContext: ParserContext {
     let baseType: BaseTypeContext?
     let customType: IdentifierContext?
+    
+    let tokens: [RecognizedToken]
+    var text: String {
+        get {
+            return tokens.reduce("") { (soFar, soGood) in
+                return soFar + soGood.string
+            }
+        }
+    }
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: NonGenericTypeContext) {
         let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
@@ -417,11 +518,11 @@ struct NonGenericTypeContext: ParserContext {
             baseType = nil
         }
         guard baseType == nil else {
-            return (consumedIndex, NonGenericTypeContext(baseType: baseType, customType: nil))
+            return (consumedIndex, NonGenericTypeContext(baseType: baseType, customType: nil, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
         }
         let (customTypeConsumed, customTypeContext) = try IdentifierContext.consume(tokens: tokens)
         consumedIndex = tokens.index(consumedIndex, offsetBy: customTypeConsumed)
-        return (consumedIndex, NonGenericTypeContext(baseType: nil, customType: customTypeContext))
+        return (consumedIndex, NonGenericTypeContext(baseType: nil, customType: customTypeContext, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
     }
 }
 
@@ -432,6 +533,15 @@ enum BaseTypeContextError: HIParserError {
 struct BaseTypeContext: ParserContext {
     let name: RecognizedToken
     
+    let tokens: [RecognizedToken]
+    var text: String {
+        get {
+            return tokens.reduce("") { (soFar, soGood) in
+                return soFar + soGood.string
+            }
+        }
+    }
+    
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: BaseTypeContext) {
         let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
         var consumedIndex = contextStart
@@ -440,13 +550,22 @@ struct BaseTypeContext: ParserContext {
         }
         let nameToken = tokens[consumedIndex]
         consumedIndex = tokens.index(after: consumedIndex)
-        return (consumedIndex, BaseTypeContext(name: nameToken))
+        return (consumedIndex, BaseTypeContext(name: nameToken, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
     }
 }
 
 struct GenericTypeContext: ParserContext {
     let array: ArrayGenericTypeContext?
     let dict: DictGenericTypeContext?
+    
+    let tokens: [RecognizedToken]
+    var text: String {
+        get {
+            return tokens.reduce("") { (soFar, soGood) in
+                return soFar + soGood.string
+            }
+        }
+    }
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: GenericTypeContext) {
         let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
@@ -460,11 +579,11 @@ struct GenericTypeContext: ParserContext {
             arrayType = nil
         }
         guard arrayType == nil else {
-            return (consumedIndex, GenericTypeContext(array: arrayType, dict: nil))
+            return (consumedIndex, GenericTypeContext(array: arrayType, dict: nil, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
         }
         let (dictTypeConsumed, dictTypeContext) = try DictGenericTypeContext.consume(tokens: tokens)
         consumedIndex = tokens.index(consumedIndex, offsetBy: dictTypeConsumed)
-        return (consumedIndex, GenericTypeContext(array: nil, dict: dictTypeContext))
+        return (consumedIndex, GenericTypeContext(array: nil, dict: dictTypeContext, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
     }
 }
 
@@ -479,6 +598,15 @@ struct ArrayGenericTypeContext: ParserContext {
     let LABRACKET: RecognizedToken
     let contentType: NonGenericTypeContext
     let RABRACKET: RecognizedToken
+    
+    let tokens: [RecognizedToken]
+    var text: String {
+        get {
+            return tokens.reduce("") { (soFar, soGood) in
+                return soFar + soGood.string
+            }
+        }
+    }
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: ArrayGenericTypeContext) {
         let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
@@ -506,7 +634,7 @@ struct ArrayGenericTypeContext: ParserContext {
         }
         let rabracketToken = tokens[consumedIndex]
         consumedIndex = tokens.index(after: consumedIndex)
-        return (consumedIndex, ArrayGenericTypeContext(ARRAY: arrayToken, LABRACKET: labracketToken, contentType: contentTypeContext, RABRACKET: rabracketToken))
+        return (consumedIndex, ArrayGenericTypeContext(ARRAY: arrayToken, LABRACKET: labracketToken, contentType: contentTypeContext, RABRACKET: rabracketToken, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
     }
 }
 
@@ -524,6 +652,15 @@ struct DictGenericTypeContext: ParserContext {
     let COMMA: RecognizedToken
     let valueType: NonGenericTypeContext
     let RABRACKET: RecognizedToken
+    
+    let tokens: [RecognizedToken]
+    var text: String {
+        get {
+            return tokens.reduce("") { (soFar, soGood) in
+                return soFar + soGood.string
+            }
+        }
+    }
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: DictGenericTypeContext) {
         let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
@@ -562,7 +699,7 @@ struct DictGenericTypeContext: ParserContext {
         let rabracketToken = tokens[consumedIndex]
         consumedIndex = tokens.index(after: consumedIndex)
         
-        return (consumedIndex, DictGenericTypeContext(DICT: dictToken, LABRACKET: labracketToken, keyType: keyTypeContext, COMMA: commaToken, valueType: valueTypeContext, RABRACKET: rabracketToken))
+        return (consumedIndex, DictGenericTypeContext(DICT: dictToken, LABRACKET: labracketToken, keyType: keyTypeContext, COMMA: commaToken, valueType: valueTypeContext, RABRACKET: rabracketToken, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
     }
 }
 
@@ -578,6 +715,15 @@ struct ResponseContext: ParserContext {
     let LBRACE: RecognizedToken
     let params: [ParamContext]
     let RBRACE: RecognizedToken
+    
+    let tokens: [RecognizedToken]
+    var text: String {
+        get {
+            return tokens.reduce("") { (soFar, soGood) in
+                return soFar + soGood.string
+            }
+        }
+    }
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: ResponseContext) {
         let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
@@ -618,7 +764,7 @@ struct ResponseContext: ParserContext {
         let rbraceToken = tokens[consumedIndex]
         consumedIndex = tokens.index(after: consumedIndex)
         
-        return (consumedIndex, ResponseContext(method: methodContext, RESPONSE: responseToken, LBRACE: lbraceToken, params: params, RBRACE: rbraceToken))
+        return (consumedIndex, ResponseContext(method: methodContext, RESPONSE: responseToken, LBRACE: lbraceToken, params: params, RBRACE: rbraceToken, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
     }
 }
 
@@ -635,6 +781,15 @@ struct StructContext: ParserContext {
     let LBRACE: RecognizedToken
     let params: [ParamContext]
     let RBRACE: RecognizedToken
+    
+    let tokens: [RecognizedToken]
+    var text: String {
+        get {
+            return tokens.reduce("") { (soFar, soGood) in
+                return soFar + soGood.string
+            }
+        }
+    }
     
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: StructContext) {
         let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
@@ -675,7 +830,7 @@ struct StructContext: ParserContext {
         let rbraceToken = tokens[consumedIndex]
         consumedIndex = tokens.index(after: consumedIndex)
         
-        return (consumedIndex, StructContext(STRUCT: structToken, name: nameContext, LBRACE: lbraceToken, params: params, RBRACE: rbraceToken))
+        return (consumedIndex, StructContext(STRUCT: structToken, name: nameContext, LBRACE: lbraceToken, params: params, RBRACE: rbraceToken, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
     }
 }
 
