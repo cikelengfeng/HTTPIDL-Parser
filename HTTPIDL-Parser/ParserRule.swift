@@ -25,7 +25,7 @@ enum ParserRuleType {
     case dictGenericTypeDecl//: ARRAY LABracket nonGenericTypeDecl COMMA nonGenericTypeDecl RABracket
     case nonGenericTypeDecl//: baseTypeDecl | identifierDecl
     case baseTypeDecl//: INT64 | INT32 | BOOL | DOUBLE | STRING | FILE | BLOB
-    case identifierDecl//: (UNDERLINE | CHAR)* (UNDERLINE | CHAR | DIGIT)*
+    case identifierDecl//: (UNDERLINE | CHAR) (UNDERLINE | CHAR | DIGIT)*
     case exit
 }
 
