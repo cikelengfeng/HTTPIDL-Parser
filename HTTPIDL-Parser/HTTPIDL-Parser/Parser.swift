@@ -22,6 +22,19 @@ func skipNLAndWS(tokens: [RecognizedToken], from: Array<RecognizedToken>.Index) 
     return consumedIndex
 }
 
+extension Array {
+    func consumeOne(from: Array<Element>.Index, condition: (Element) -> Bool) -> (consumedIndex:Array<Element>.Index, consumedElement: Element)? {
+        guard from < self.endIndex else {
+            return nil
+        }
+        let one = self[from]
+        if condition(one) {
+            return (self.index(after: from), one)
+        }
+        return nil
+    }
+}
+
 protocol ParserContext {
 
     var tokens: [RecognizedToken] {get}
@@ -59,7 +72,8 @@ struct EntryContext: ParserContext {
                 message = messageContext
                 messages.append(messageContext)
                 consumedIndex = tokens.index(consumedIndex, offsetBy: messageConsumed)
-            } catch {
+            } catch let error {
+                debugPrint(error)
                 message = nil
             }
             guard message == nil else {
@@ -69,15 +83,20 @@ struct EntryContext: ParserContext {
                 let (structConsumed, structContext) = try StructContext.consume(tokens: tokens.subarray(from: consumedIndex))
                 structs.append(structContext)
                 consumedIndex = tokens.index(consumedIndex, offsetBy: structConsumed)
-            } catch {
+            } catch let error {
+                debugPrint(error)
                 break
             }
         }
         consumedIndex = skipNLAndWS(tokens: tokens, from: consumedIndex)
-        guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.EOF else {
+        
+        guard let (index, eof) = tokens.consumeOne(from: consumedIndex, condition: { (token) -> Bool in
+            return token.type == TokenType.EOF
+        }) else {
             throw EntryContextError.missingEOF
         }
-        return (consumedIndex, EntryContext(messsages: messages, structs: structs, EOF: tokens[consumedIndex], tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
+        consumedIndex = index
+        return (consumedIndex, EntryContext(messsages: messages, structs: structs, EOF: eof, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
     }
 }
 
@@ -108,11 +127,12 @@ struct MessageContext: ParserContext {
         let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
         var consumedIndex = contextStart
         //consume first keyword message
-        guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.keywordMessage else {
+        guard let (indexAfterMsg, messageToken) = tokens.consumeOne(from: consumedIndex, condition: { (token) -> Bool in
+            return token.type == TokenType.keywordMessage
+        }) else {
             throw MessageContextError.missingMessageKeyword
         }
-        let messageToken = tokens[consumedIndex]
-        consumedIndex = tokens.index(after: consumedIndex)
+        consumedIndex = indexAfterMsg
         
         //consume uri
         let (uriConsumed, uri) = try URIContext.consume(tokens: tokens.subarray(from: consumedIndex))
@@ -120,11 +140,12 @@ struct MessageContext: ParserContext {
         
         //consume lbrace
         consumedIndex = skipNLAndWS(tokens: tokens, from: consumedIndex)
-        guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.assistLBrace else {
+        guard let (indexAfterLBrace, lbraceToken) = tokens.consumeOne(from: consumedIndex, condition: { (token) -> Bool in
+            return token.type == TokenType.assistLBrace
+        }) else {
             throw MessageContextError.missingLBrace
         }
-        let lbraceToken = tokens[consumedIndex]
-        consumedIndex = tokens.index(after: consumedIndex)
+        consumedIndex = indexAfterLBrace
         
         //consume requests
         var requests: [RequestContext] = []
@@ -136,7 +157,8 @@ struct MessageContext: ParserContext {
                 request = requestContext
                 requests.append(requestContext)
                 consumedIndex = tokens.index(consumedIndex, offsetBy: requestConsumed)
-            } catch {
+            } catch let error {
+                debugPrint(error)
                 request = nil
             }
             guard request == nil else {
@@ -146,18 +168,20 @@ struct MessageContext: ParserContext {
                 let (responseConsumed, responseContext) = try ResponseContext.consume(tokens: tokens.subarray(from: consumedIndex))
                 responses.append(responseContext)
                 consumedIndex = tokens.index(consumedIndex, offsetBy: responseConsumed)
-            } catch {
+            } catch let error {
+                debugPrint(error)
                 break
             }
         }
         
         //consume right brace
         consumedIndex = skipNLAndWS(tokens: tokens, from: consumedIndex)
-        guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.assistRBrace else {
+        guard let (indexAfterRBrace, rbraceToken) = tokens.consumeOne(from: consumedIndex, condition: { (token) -> Bool in
+            return token.type == TokenType.assistRBrace
+        }) else {
             throw MessageContextError.missingRBrace
         }
-        let rbraceToken = tokens[consumedIndex]
-        consumedIndex = tokens.index(after: consumedIndex)
+        consumedIndex = indexAfterRBrace
         
         //return all above
         return (consumedIndex, MessageContext(MESSAGE: messageToken, uri: uri, LBRACE: lbraceToken, requests: requests, responses: responses, RBRACE: rbraceToken, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
@@ -185,7 +209,8 @@ struct URIContext: ParserContext {
                 let (componentConsumed, componentContext) = try URIPathComponentContext.consume(tokens: tokens.subarray(from: consumedIndex))
                 components.append(componentContext)
                 consumedIndex = tokens.index(consumedIndex, offsetBy: componentConsumed)
-            } catch {
+            } catch let error {
+                debugPrint(error)
                 break
             }
         }
@@ -215,11 +240,12 @@ struct URIPathComponentContext: ParserContext {
         let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
         var consumedIndex = contextStart
         //consume slash
-        guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.assistSlash else {
+        guard let (indexAfterSLash, slashToken) = tokens.consumeOne(from: consumedIndex, condition: { (token) -> Bool in
+            return token.type == TokenType.assistSlash
+        }) else {
             throw URIPathComponentContextError.missingSlash
         }
-        let slashToken = tokens[consumedIndex]
-        consumedIndex = tokens.index(after: consumedIndex)
+        consumedIndex = indexAfterSLash
         
         //consume identifier
         let identifier: IdentifierContext?
@@ -227,7 +253,8 @@ struct URIPathComponentContext: ParserContext {
             let (identifierConsumed, identifierContext) = try IdentifierContext.consume(tokens: tokens.subarray(from: consumedIndex))
             consumedIndex = tokens.index(consumedIndex, offsetBy: identifierConsumed)
             identifier = identifierContext
-        } catch {
+        } catch let error {
+            debugPrint(error)
             identifier = nil
         }
         guard identifier == nil else {
@@ -260,11 +287,12 @@ struct ParamInUriContext: ParserContext {
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: ParamInUriContext) {
         let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
         var consumedIndex = contextStart
-        guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.assistDollar else {
+        guard let (indexAfterDollar, dollarToken) = tokens.consumeOne(from: consumedIndex, condition: { (token) -> Bool in
+            return token.type == TokenType.assistDollar
+        }) else {
             throw ParamInUriContextError.missingDollar
         }
-        let dollarToken = tokens[consumedIndex]
-        consumedIndex = tokens.index(after: consumedIndex)
+        consumedIndex = indexAfterDollar
         
         // consume identifier
         let (identifierConsumed, identifierContext) = try IdentifierContext.consume(tokens: tokens.subarray(from: consumedIndex))
@@ -293,10 +321,12 @@ struct IdentifierContext: ParserContext {
         let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
         var consumedIndex = contextStart
         //first token MUST NOT be digit
-        guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == .fragmentChar || tokens[consumedIndex].type == .assistUnderline else {
+        guard let (secondIndex, _) = tokens.consumeOne(from: consumedIndex, condition: { (token) -> Bool in
+            return token.type == TokenType.fragmentChar || token.type == TokenType.assistUnderline
+        }) else {
             throw IdentifierContextError.missingUnderlineOrChar
         }
-        consumedIndex = tokens.index(after: consumedIndex)
+        consumedIndex = secondIndex
         Loop: while consumedIndex < tokens.endIndex {
             let token = tokens[consumedIndex]
             switch token.type {
@@ -342,18 +372,20 @@ struct RequestContext: ParserContext {
         consumedIndex = tokens.index(consumedIndex, offsetBy: methodConsumed)
         //consume request
         consumedIndex = skipNLAndWS(tokens: tokens, from: consumedIndex)
-        guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.keywordRequest else {
+        guard let (indexAfterRequest, requestToken) = tokens.consumeOne(from: consumedIndex, condition: { (token) -> Bool in
+            return token.type == TokenType.keywordRequest
+        }) else {
             throw RequestContextError.missingRequestKeyword
         }
-        let requestToken = tokens[consumedIndex]
-        consumedIndex = tokens.index(after: consumedIndex)
+        consumedIndex = indexAfterRequest
         //consume lbrace
         consumedIndex = skipNLAndWS(tokens: tokens, from: consumedIndex)
-        guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.assistLBrace else {
+        guard let (indexAfterLBrace, lbraceToken) = tokens.consumeOne(from: consumedIndex, condition: { (token) -> Bool in
+            return token.type == TokenType.assistLBrace
+        }) else {
             throw RequestContextError.missingLBrace
         }
-        let lbraceToken = tokens[consumedIndex]
-        consumedIndex = tokens.index(after: consumedIndex)
+        consumedIndex = indexAfterLBrace
         //consume params
         var params: [ParamContext] = []
         while consumedIndex < tokens.endIndex {
@@ -361,17 +393,19 @@ struct RequestContext: ParserContext {
                 let (paramConsumed, paramContext) = try ParamContext.consume(tokens: tokens.subarray(from: consumedIndex))
                 params.append(paramContext)
                 consumedIndex = tokens.index(consumedIndex, offsetBy: paramConsumed)
-            } catch {
+            } catch let error {
+                debugPrint(error)
                 break
             }
         }
         //consume rbrace
         consumedIndex = skipNLAndWS(tokens: tokens, from: consumedIndex)
-        guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.assistRBrace else {
+        guard let (indexAfterRBrace, rbraceToken) = tokens.consumeOne(from: consumedIndex, condition: { (token) -> Bool in
+            return token.type == TokenType.assistRBrace
+        }) else {
             throw RequestContextError.missingRBrace
         }
-        let rbraceToken = tokens[consumedIndex]
-        consumedIndex = tokens.index(after: consumedIndex)
+        consumedIndex = indexAfterRBrace
         
         return (consumedIndex, RequestContext(method: methodContext, REQUEST: requestToken, LBRACE: lbraceToken, params: params, RBRACE: rbraceToken, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
     }
@@ -397,12 +431,13 @@ struct MethodContext: ParserContext {
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: MethodContext) {
         let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
         var consumedIndex = contextStart
-        guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.methodGet || tokens[consumedIndex].type == TokenType.methodPost || tokens[consumedIndex].type == TokenType.methodPut || tokens[consumedIndex].type == TokenType.methodPatch || tokens[consumedIndex].type == TokenType.methodDelete else {
+        guard let (indexAfterName, nameToken) = tokens.consumeOne(from: consumedIndex, condition: { (token) -> Bool in
+            return token.type == TokenType.methodGet || token.type == TokenType.methodPost || token.type == TokenType.methodPut || token.type == TokenType.methodPatch || token.type == TokenType.methodDelete
+        }) else {
             throw MethodContextError.missingMethodKeyword
         }
-        let name = tokens[consumedIndex]
-        consumedIndex = tokens.index(after: consumedIndex)
-        return (consumedIndex, MethodContext(name: name, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
+        consumedIndex = indexAfterName
+        return (consumedIndex, MethodContext(name: nameToken, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
     }
 }
 
@@ -439,21 +474,23 @@ struct ParamContext: ParserContext {
         consumedIndex = tokens.index(consumedIndex, offsetBy: lhsConsumed)
         //consume assign token
         consumedIndex = skipNLAndWS(tokens: tokens, from: consumedIndex)
-        guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.assistAssign else {
+        guard let (indexAfterAssign, assignToken) = tokens.consumeOne(from: consumedIndex, condition: { (token) -> Bool in
+            return token.type == TokenType.assistAssign
+        }) else {
             throw ParamContextError.missingAssign
         }
-        let assignToken = tokens[consumedIndex]
-        consumedIndex = tokens.index(after: consumedIndex)
+        consumedIndex = indexAfterAssign
         //consume rhs 
         let (rhsConsumed, rhsContext) = try IdentifierContext.consume(tokens: tokens.subarray(from: consumedIndex))
         consumedIndex = tokens.index(consumedIndex, offsetBy: rhsConsumed)
         //consume semicolon
         consumedIndex = skipNLAndWS(tokens: tokens, from: consumedIndex)
-        guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.assistSemicolon else {
+        guard let (indexAfterSemicolon, semicolonToken) = tokens.consumeOne(from: consumedIndex, condition: { (token) -> Bool in
+            return token.type == TokenType.assistSemicolon
+        }) else {
             throw ParamContextError.missingSemicolon
         }
-        let semicolonToken = tokens[consumedIndex]
-        consumedIndex = tokens.index(after: consumedIndex)
+        consumedIndex = indexAfterSemicolon
         
         return (consumedIndex, ParamContext(type: typeContext, lhs: lhsContext, ASSIGN: assignToken, rhs: rhsContext, SEMICOLON: semicolonToken, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
     }
@@ -481,7 +518,8 @@ struct TypeContext: ParserContext {
             let (nonGenericTypeConsumed, nonGenericTypeContext) = try NonGenericTypeContext.consume(tokens: tokens.subarray(from: consumedIndex))
             nonGenericType = nonGenericTypeContext
             consumedIndex = tokens.index(consumedIndex, offsetBy: nonGenericTypeConsumed)
-        } catch {
+        } catch let error {
+            debugPrint(error)
             nonGenericType = nil
         }
         guard nonGenericType == nil else {
@@ -514,7 +552,8 @@ struct NonGenericTypeContext: ParserContext {
             let (baseTypeConsumed, baseTypeContext) = try BaseTypeContext.consume(tokens: tokens.subarray(from: consumedIndex))
             baseType = baseTypeContext
             consumedIndex = tokens.index(consumedIndex, offsetBy: baseTypeConsumed)
-        } catch {
+        } catch let error {
+            debugPrint(error)
             baseType = nil
         }
         guard baseType == nil else {
@@ -545,11 +584,12 @@ struct BaseTypeContext: ParserContext {
     static func consume(tokens: [RecognizedToken]) throws -> (consumedIndex: Array<RecognizedToken>.Index, context: BaseTypeContext) {
         let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
         var consumedIndex = contextStart
-        guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.typeBlob || tokens[consumedIndex].type == TokenType.typeBool || tokens[consumedIndex].type == TokenType.typeFile || tokens[consumedIndex].type == TokenType.typeInt32 || tokens[consumedIndex].type == TokenType.typeInt64 || tokens[consumedIndex].type == TokenType.typeDouble || tokens[consumedIndex].type == TokenType.typeString else {
+        guard let (indexAfterName, nameToken) = tokens.consumeOne(from: consumedIndex, condition: { (token) -> Bool in
+            return token.type == TokenType.typeBlob || token.type == TokenType.typeBool || token.type == TokenType.typeFile || token.type == TokenType.typeInt32 || token.type == TokenType.typeInt64 || token.type == TokenType.typeDouble || token.type == TokenType.typeString
+        }) else {
             throw BaseTypeContextError.missingTypeKeyword
         }
-        let nameToken = tokens[consumedIndex]
-        consumedIndex = tokens.index(after: consumedIndex)
+        consumedIndex = indexAfterName
         return (consumedIndex, BaseTypeContext(name: nameToken, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
     }
 }
@@ -575,7 +615,8 @@ struct GenericTypeContext: ParserContext {
             let (arrayTypeConsumed, arrayTypeContext) = try ArrayGenericTypeContext.consume(tokens: tokens.subarray(from: consumedIndex))
             arrayType = arrayTypeContext
             consumedIndex = tokens.index(consumedIndex, offsetBy: arrayTypeConsumed)
-        } catch {
+        } catch let error {
+            debugPrint(error)
             arrayType = nil
         }
         guard arrayType == nil else {
@@ -612,28 +653,31 @@ struct ArrayGenericTypeContext: ParserContext {
         let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
         var consumedIndex = contextStart
         //consume array
-        guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.typeArray else {
+        guard let (indexAfterArray, arrayToken) = tokens.consumeOne(from: consumedIndex, condition: { (token) -> Bool in
+            return token.type == TokenType.typeArray
+        }) else {
             throw ArrayGenericTypeContextError.missingArrayKeyword
         }
-        let arrayToken = tokens[consumedIndex]
-        consumedIndex = tokens.index(after: consumedIndex)
+        consumedIndex = indexAfterArray
         //consume labracket
         consumedIndex = skipNLAndWS(tokens: tokens, from: consumedIndex)
-        guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.assistLABracket else {
+        guard let (indexAfterLABracket, labracketToken) = tokens.consumeOne(from: consumedIndex, condition: { (token) -> Bool in
+            return token.type == TokenType.assistLABracket
+        }) else {
             throw ArrayGenericTypeContextError.missingLABracket
         }
-        let labracketToken = tokens[consumedIndex]
-        consumedIndex = tokens.index(after: consumedIndex)
+        consumedIndex = indexAfterLABracket
         //consume content type
         let (contentTypeConsumed, contentTypeContext) = try NonGenericTypeContext.consume(tokens: tokens.subarray(from: consumedIndex))
         consumedIndex = tokens.index(consumedIndex, offsetBy: contentTypeConsumed)
         //consume rabracket
         consumedIndex = skipNLAndWS(tokens: tokens, from: consumedIndex)
-        guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.assistRABracket else {
+        guard let (indexAfterRABracket, rabracketToken) = tokens.consumeOne(from: consumedIndex, condition: { (token) -> Bool in
+            return token.type == TokenType.assistRABracket
+        }) else {
             throw ArrayGenericTypeContextError.missingRABracket
         }
-        let rabracketToken = tokens[consumedIndex]
-        consumedIndex = tokens.index(after: consumedIndex)
+        consumedIndex = indexAfterRABracket
         return (consumedIndex, ArrayGenericTypeContext(ARRAY: arrayToken, LABRACKET: labracketToken, contentType: contentTypeContext, RABRACKET: rabracketToken, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
     }
 }
@@ -666,38 +710,42 @@ struct DictGenericTypeContext: ParserContext {
         let contextStart = skipNLAndWS(tokens: tokens, from: tokens.startIndex)
         var consumedIndex = contextStart
         //consume dict
-        guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.typeDict else {
+        guard let (indexAfterDict, dictToken) = tokens.consumeOne(from: consumedIndex, condition: { (token) -> Bool in
+            return token.type == TokenType.typeDict
+        }) else {
             throw DictGenericTypeContextError.missingDictKeyword
         }
-        let dictToken = tokens[consumedIndex]
-        consumedIndex = tokens.index(after: consumedIndex)
+        consumedIndex = indexAfterDict
         //consume labracket
         consumedIndex = skipNLAndWS(tokens: tokens, from: consumedIndex)
-        guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.assistLABracket else {
+        guard let (indexAfterLABracket, labracketToken) = tokens.consumeOne(from: consumedIndex, condition: { (token) -> Bool in
+            return token.type == TokenType.assistLABracket
+        }) else {
             throw DictGenericTypeContextError.missingLABracket
         }
-        let labracketToken = tokens[consumedIndex]
-        consumedIndex = tokens.index(after: consumedIndex)
+        consumedIndex = indexAfterLABracket
         //consume key type
         let (keyTypeConsumed, keyTypeContext) = try NonGenericTypeContext.consume(tokens: tokens.subarray(from: consumedIndex))
         consumedIndex = tokens.index(consumedIndex, offsetBy: keyTypeConsumed)
         //consume comma
         consumedIndex = skipNLAndWS(tokens: tokens, from: consumedIndex)
-        guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.assistComma else {
+        guard let (indexAfterComma, commaToken) = tokens.consumeOne(from: consumedIndex, condition: { (token) -> Bool in
+            return token.type == TokenType.assistComma
+        }) else {
             throw DictGenericTypeContextError.missingComma
         }
-        let commaToken = tokens[consumedIndex]
-        consumedIndex = tokens.index(after: consumedIndex)
+        consumedIndex = indexAfterComma
         //consume value type
         let (valueTypeConsumed, valueTypeContext) = try NonGenericTypeContext.consume(tokens: tokens.subarray(from: consumedIndex))
         consumedIndex = tokens.index(consumedIndex, offsetBy: valueTypeConsumed)
         //consume rabracket
         consumedIndex = skipNLAndWS(tokens: tokens, from: consumedIndex)
-        guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.assistRABracket else {
+        guard let (indexAfterRABracket, rabracketToken) = tokens.consumeOne(from: consumedIndex, condition: { (token) -> Bool in
+            return token.type == TokenType.assistRABracket
+        }) else {
             throw DictGenericTypeContextError.missingRABracket
         }
-        let rabracketToken = tokens[consumedIndex]
-        consumedIndex = tokens.index(after: consumedIndex)
+        consumedIndex = indexAfterRABracket
         
         return (consumedIndex, DictGenericTypeContext(DICT: dictToken, LABRACKET: labracketToken, keyType: keyTypeContext, COMMA: commaToken, valueType: valueTypeContext, RABRACKET: rabracketToken, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
     }
@@ -740,11 +788,12 @@ struct ResponseContext: ParserContext {
         consumedIndex = tokens.index(after: consumedIndex)
         //consume lbrace
         consumedIndex = skipNLAndWS(tokens: tokens, from: consumedIndex)
-        guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.assistLBrace else {
+        guard let (indexAfterLBrace, lbraceToken) = tokens.consumeOne(from: consumedIndex, condition: { (token) -> Bool in
+            return token.type == TokenType.assistLBrace
+        })else {
             throw ResponseContextError.missingLBrace
         }
-        let lbraceToken = tokens[consumedIndex]
-        consumedIndex = tokens.index(after: consumedIndex)
+        consumedIndex = indexAfterLBrace
         //consume params
         var params: [ParamContext] = []
         while consumedIndex < tokens.endIndex {
@@ -752,17 +801,19 @@ struct ResponseContext: ParserContext {
                 let (paramConsumed, paramContext) = try ParamContext.consume(tokens: tokens.subarray(from: consumedIndex))
                 params.append(paramContext)
                 consumedIndex = tokens.index(consumedIndex, offsetBy: paramConsumed)
-            } catch {
+            } catch let error {
+                debugPrint(error)
                 break
             }
         }
         //consume rbrace
         consumedIndex = skipNLAndWS(tokens: tokens, from: consumedIndex)
-        guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.assistRBrace else {
+        guard let (indexAfterRBrace, rbraceToken) = tokens.consumeOne(from: consumedIndex, condition: { (token) -> Bool in
+            return token.type == TokenType.assistRBrace
+        }) else {
             throw RequestContextError.missingRBrace
         }
-        let rbraceToken = tokens[consumedIndex]
-        consumedIndex = tokens.index(after: consumedIndex)
+        consumedIndex = indexAfterRBrace
         
         return (consumedIndex, ResponseContext(method: methodContext, RESPONSE: responseToken, LBRACE: lbraceToken, params: params, RBRACE: rbraceToken, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
     }
@@ -796,21 +847,23 @@ struct StructContext: ParserContext {
         var consumedIndex = contextStart
         //consume struct
         consumedIndex = skipNLAndWS(tokens: tokens, from: consumedIndex)
-        guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.keywordStruct else {
+        guard let (indexAfterStruct, structToken) = tokens.consumeOne(from: consumedIndex, condition: { (token) -> Bool in
+            return token.type == TokenType.keywordStruct
+        }) else {
             throw StructContextError.missingStructKeyword
         }
-        let structToken = tokens[consumedIndex]
-        consumedIndex = tokens.index(after: consumedIndex)
+        consumedIndex = indexAfterStruct
         //consume name
         let (nameConsumed, nameContext) = try IdentifierContext.consume(tokens: tokens.subarray(from: consumedIndex))
         consumedIndex = tokens.index(consumedIndex, offsetBy: nameConsumed)
         //consume lbrace
         consumedIndex = skipNLAndWS(tokens: tokens, from: consumedIndex)
-        guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.assistLBrace else {
+        guard let (indexAfterLBrace, lbraceToken) = tokens.consumeOne(from: consumedIndex, condition: { (token) -> Bool in
+            return token.type == TokenType.assistLBrace
+        }) else {
             throw StructContextError.missingLBrace
         }
-        let lbraceToken = tokens[consumedIndex]
-        consumedIndex = tokens.index(after: consumedIndex)
+        consumedIndex = indexAfterLBrace
         //consume params
         var params: [ParamContext] = []
         while consumedIndex < tokens.endIndex {
@@ -818,17 +871,19 @@ struct StructContext: ParserContext {
                 let (paramConsumed, paramContext) = try ParamContext.consume(tokens: tokens.subarray(from: consumedIndex))
                 params.append(paramContext)
                 consumedIndex = tokens.index(consumedIndex, offsetBy: paramConsumed)
-            } catch {
+            } catch let error {
+                debugPrint(error)
                 break
             }
         }
         //consume rbrace
         consumedIndex = skipNLAndWS(tokens: tokens, from: consumedIndex)
-        guard consumedIndex < tokens.endIndex, tokens[consumedIndex].type == TokenType.assistRBrace else {
+        guard let (indexAfterRBrace, rbraceToken) = tokens.consumeOne(from: consumedIndex, condition: { (token) -> Bool in
+            return token.type == TokenType.assistRBrace
+        }) else {
             throw StructContextError.missingRBrace
         }
-        let rbraceToken = tokens[consumedIndex]
-        consumedIndex = tokens.index(after: consumedIndex)
+        consumedIndex = indexAfterRBrace
         
         return (consumedIndex, StructContext(STRUCT: structToken, name: nameContext, LBRACE: lbraceToken, params: params, RBRACE: rbraceToken, tokens: tokens.subarray(range: Range(uncheckedBounds: (contextStart, consumedIndex)))))
     }
